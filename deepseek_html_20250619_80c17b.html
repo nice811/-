@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>蔬菜升糖指数识别助手</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        :root {
+            --primary: #07C160;
+            --primary-dark: #06AD56;
+            --secondary: #576B95;
+            --light: #F8F8F8;
+            --dark: #333333;
+            --gray: #8A8A8A;
+            --danger: #FA5151;
+            --success: #07C160;
+            --warning: #FF9C00;
+            --card-bg: #FFFFFF;
+            --page-bg: #F5F5F5;
+            --border: #EEEEEE;
+        }
+        
+        body {
+            background-color: var(--page-bg);
+            color: var(--dark);
+            line-height: 1.6;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .wx-app {
+            max-width: 500px;
+            height: 100vh;
+            margin: 0 auto;
+            background: var(--page-bg);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            position: relative;
+        }
+        
+        /* 小程序风格顶部栏 */
+        .wx-header {
+            background: var(--card-bg);
+            color: var(--dark);
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            height: 50px;
+        }
+        
+        .wx-header .title {
+            font-size: 18px;
+            font-weight: 600;
+            text-align: center;
+            flex: 1;
+        }
+        
+        .wx-header .action {
+            width: 40px;
+            text-align: right;
+            color: var(--primary);
+            font-size: 16px;
+        }
+        
+        /* 主内容区 */
+        .wx-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            padding-bottom: 70px;
+        }
+        
+        /* 卡片样式 - 小程序风格 */
+        .wx-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            margin-bottom: 16px;
+            overflow: hidden;
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        .wx-card-header {
+            padding: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .wx-card-body {
+            padding: 16px;
+        }
+        
+        /* 拍照区域 */
+        .camera-section {
+            text-align: center;
+            padding: 10px 0 20px;
+        }
+        
+        .camera-preview {
+            width: 100%;
+            height: 200px;
+            background: #EDF7ED;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--gray);
+            position: relative;
+            overflow: hidden;
+            border: 1px dashed var(--primary);
+        }
+        
+        .camera-icon {
+            width: 70px;
+            height: 70px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: var(--primary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        
+        .camera-icon:hover {
+            transform: scale(1.05);
+            background: white;
+        }
+        
+        .voice-control {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .voice-input {
+            flex: 1;
+            background: var(--light);
+            border-radius: 20px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid var(--border);
+        }
+        
+        .voice-input i {
+            color: var(--primary);
+            font-size: 18px;
+        }
+        
+        .voice-input input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            outline: none;
+            font-size: 15px;
+        }
+        
+        .voice-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 0 20px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.3s ease;
+            font-size: 15px;
+        }
+        
+        .voice-btn:active {
+            background: var(--primary-dark);
+            transform: translateY(1px);
+        }
+        
+        /* 升糖指数指南 */
+        .gi-guide {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 15px;
+        }
+        
+        .gi-item {
+            flex: 1;
+            min-width: 100px;
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 14px 10px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+        }
+        
+        .gi-low {
+            border-top: 3px solid var(--success);
+        }
+        
+        .gi-medium {
+            border-top: 3px solid var(--warning);
+        }
+        
+        .gi-high {
+            border-top: 3px solid var(--danger);
+        }
+        
+        .gi-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 5px 0;
+        }
+        
+        .gi-type {
+            font-size: 0.85rem;
+            color: var(--gray);
+        }
+        
+        /* 蔬菜列表 */
+        .vegetable-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 15px;
+        }
+        
+        .vegetable-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-radius: 8px;
+            background: var(--light);
+            gap: 12px;
+            transition: all 0.2s ease;
+        }
+        
+        .vegetable-item:active {
+            background: #E5F5E5;
+        }
+        
+        .vegetable-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            background: #E1F5E1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            color: var(--primary);
+        }
+        
+        .vegetable-info {
+            flex: 1;
+        }
+        
+        .vegetable-name {
+            font-weight: 500;
+            margin-bottom: 2px;
+            font-size: 15px;
+        }
+        
+        .vegetable-gi {
+            color: var(--gray);
+            font-size: 0.85rem;
+        }
+        
+        .gi-badge {
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .gi-low-badge {
+            background: #E8F5E9;
+            color: var(--success);
+        }
+        
+        .gi-medium-badge {
+            background: #FFF8E1;
+            color: var(--warning);
+        }
+        
+        /* 语音命令示例 */
+        .command-examples {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .command-item {
+            background: #F0F7FF;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 0.85rem;
+            text-align: center;
+            color: var(--secondary);
+            transition: all 0.2s ease;
+        }
+        
+        .command-item:active {
+            background: #E3F2FD;
+        }
+        
+        /* 底部导航 - 小程序风格 */
+        .wx-tabbar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--card-bg);
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0;
+            border-top: 1px solid var(--border);
+            z-index: 100;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            color: var(--gray);
+            font-size: 0.7rem;
+            text-decoration: none;
+            padding: 6px 0;
+            flex: 1;
+        }
+        
+        .tab-item.active {
+            color: var(--primary);
+        }
+        
+        .tab-item i {
+            font-size: 20px;
+            margin-bottom: 2px;
+        }
+        
+        .tab-label {
+            font-size: 11px;
+        }
+        
+        /* 加载动画 */
+        .wx-loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        .wx-loading.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        .wx-loading .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(7, 193, 96, 0.2);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* 结果卡片 */
+        .result-card {
+            padding: 20px;
+            text-align: center;
+            display: none;
+        }
+        
+        .result-card.active {
+            display: block;
+        }
+        
+        .result-image {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin: 0 auto 15px;
+            border: 3px solid var(--success);
+        }
+        
+        .result-name {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 5px;
+        }
+        
+        .result-gi {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin: 10px 0;
+            color: var(--primary);
+        }
+        
+        .gi-description {
+            background: #E8F5E9;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
+            text-align: left;
+            font-size: 14px;
+        }
+        
+        /* AI助手区域 */
+        .ai-assistant {
+            margin-top: 20px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        
+        .ai-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .ai-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #6E8BFA, #07C160);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
+        
+        .ai-title {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .ai-conversation {
+            background: var(--light);
+            border-radius: 12px;
+            padding: 12px;
+            min-height: 120px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .ai-input-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .ai-input {
+            flex: 1;
+            background: var(--light);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 10px 15px;
+            font-size: 14px;
+            outline: none;
+        }
+        
+        .ai-send-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        /* 小程序动画 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .wx-card {
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        /* 响应式调整 */
+        @media (max-width: 480px) {
+            .wx-content {
+                padding: 12px;
+                padding-bottom: 70px;
+            }
+            
+            .gi-guide {
+                gap: 8px;
+            }
+            
+            .gi-item {
+                min-width: calc(33.33% - 8px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="wx-app">
+        <!-- 小程序风格顶部栏 -->
+        <div class="wx-header">
+            <div class="action"><i class="fas fa-arrow-left"></i></div>
+            <div class="title">蔬菜升糖指数识别助手</div>
+            <div class="action"><i class="fas fa-ellipsis-h"></i></div>
+        </div>
+        
+        <!-- 主内容区 -->
+        <div class="wx-content">
+            <!-- 拍照识别卡片 -->
+            <div class="wx-card">
+                <div class="wx-card-header">
+                    <i class="fas fa-camera" style="color: var(--primary);"></i>
+                    <span>拍照识别蔬菜</span>
+                </div>
+                <div class="wx-card-body">
+                    <div class="camera-section">
+                        <div class="camera-preview">
+                            <div class="camera-icon">
+                                <i class="fas fa-camera"></i>
+                            </div>
+                        </div>
+                        <p style="color: var(--gray); font-size: 14px;">点击拍摄蔬菜照片 或说"拍照"、"识别蔬菜"</p>
+                        
+                        <div class="voice-control">
+                            <div class="voice-input">
+                                <i class="fas fa-microphone"></i>
+                                <input type="text" placeholder="请说出蔬菜名称或命令..." id="voiceInput">
+                            </div>
+                            <button class="voice-btn">
+                                <i class="fas fa-microphone"></i>
+                                <span>语音</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="result-card" id="resultCard">
+                        <img src="https://images.unsplash.com/photo-1518977956812-cd3dbadaaf31?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=200&q=80" class="result-image" alt="西兰花">
+                        <h2 class="result-name">西兰花</h2>
+                        <div class="result-gi">GI: <span>15</span></div>
+                        <div class="gi-badge gi-low-badge">低升糖指数</div>
+                        
+                        <div class="gi-description">
+                            <p><strong>健康建议：</strong>西兰花是低升糖指数的优质蔬菜，富含维生素C、维生素K和膳食纤维。适合糖尿病患者和减肥人群食用。</p>
+                            <p><strong>食用建议：</strong>建议清蒸或快炒，避免长时间高温烹饪以保留营养。</p>
+                        </div>
+                        
+                        <button class="voice-btn" style="margin-top: 15px; width: 100%;">
+                            <i class="fas fa-undo"></i>
+                            <span>重新识别</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 升糖指数指南卡片 -->
+            <div class="wx-card">
+                <div class="wx-card-header">
+                    <i class="fas fa-book" style="color: var(--warning);"></i>
+                    <span>升糖指数指南</span>
+                </div>
+                <div class="wx-card-body">
+                    <div class="gi-guide">
+                        <div class="gi-item gi-low">
+                            <div class="gi-value">≤ 55</div>
+                            <div class="gi-type">低升糖指数</div>
+                        </div>
+                        <div class="gi-item gi-medium">
+                            <div class="gi-value">56-69</div>
+                            <div class="gi-type">中升糖指数</div>
+                        </div>
+                        <div class="gi-item gi-high">
+                            <div class="gi-value">≥ 70</div>
+                            <div class="gi-type">高升糖指数</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 20px;">
+                        <h3 style="display: flex; align-items: center; gap: 8px; font-size: 15px;">
+                            <i class="fas fa-heartbeat" style="color: var(--danger);"></i> 
+                            <span>低GI饮食计划</span>
+                        </h3>
+                        <p style="margin-top: 10px; color: var(--gray); font-size: 14px;">选择低升糖指数的蔬菜有助于控制血糖，建议每日摄入300-500克新鲜蔬菜，其中深色蔬菜应占一半以上。</p>
+                        
+                        <h3 style="margin-top: 15px; display: flex; align-items: center; gap: 8px; font-size: 15px;">
+                            <i class="fas fa-apple-alt" style="color: var(--success);"></i> 
+                            <span>健康建议</span>
+                        </h3>
+                        <p style="margin-top: 10px; color: var(--gray); font-size: 14px;">优先选择绿叶蔬菜和十字花科蔬菜，多样化搭配，注意烹饪方式对升糖指数的影响。</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 常见蔬菜卡片 -->
+            <div class="wx-card">
+                <div class="wx-card-header">
+                    <i class="fas fa-carrot" style="color: #FF9800;"></i>
+                    <span>常见蔬菜升糖指数</span>
+                </div>
+                <div class="wx-card-body">
+                    <div class="vegetable-list">
+                        <div class="vegetable-item">
+                            <div class="vegetable-icon">
+                                <i class="fas fa-seedling"></i>
+                            </div>
+                            <div class="vegetable-info">
+                                <div class="vegetable-name">西兰花</div>
+                                <div class="vegetable-gi">GI: 15</div>
+                            </div>
+                            <div class="gi-badge gi-low-badge">低GI</div>
+                        </div>
+                        
+                        <div class="vegetable-item">
+                            <div class="vegetable-icon" style="color: #FF5722;">
+                                <i class="fas fa-pepper-hot"></i>
+                            </div>
+                            <div class="vegetable-info">
+                                <div class="vegetable-name">青椒</div>
+                                <div class="vegetable-gi">GI: 15</div>
+                            </div>
+                            <div class="gi-badge gi-low-badge">低GI</div>
+                        </div>
+                        
+                        <div class="vegetable-item">
+                            <div class="vegetable-icon" style="color: #9C27B0;">
+                                <i class="fas fa-eggplant"></i>
+                            </div>
+                            <div class="vegetable-info">
+                                <div class="vegetable-name">茄子</div>
+                                <div class="vegetable-gi">GI: 15</div>
+                            </div>
+                            <div class="gi-badge gi-low-badge">低GI</div>
+                        </div>
+                        
+                        <div class="vegetable-item">
+                            <div class="vegetable-icon" style="color: #FF9800;">
+                                <i class="fas fa-carrot"></i>
+                            </div>
+                            <div class="vegetable-info">
+                                <div class="vegetable-name">胡萝卜</div>
+                                <div class="vegetable-gi">GI: 47</div>
+                            </div>
+                            <div class="gi-badge gi-low-badge">低GI</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 语音命令卡片 -->
+            <div class="wx-card">
+                <div class="wx-card-header">
+                    <i class="fas fa-microphone-alt" style="color: var(--secondary);"></i>
+                    <span>语音命令示例</span>
+                </div>
+                <div class="wx-card-body">
+                    <div class="command-examples">
+                        <div class="command-item">"西兰花的升糖指数"</div>
+                        <div class="command-item">"收藏西兰花"</div>
+                        <div class="command-item">"查看健康食谱"</div>
+                        <div class="command-item">"什么是升糖指数"</div>
+                        <div class="command-item">"打开历史记录"</div>
+                        <div class="command-item">"拍照识别"</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- AI助手区域 -->
+            <div class="ai-assistant wx-card">
+                <div class="ai-header">
+                    <div class="ai-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="ai-title">AI健康助手</div>
+                </div>
+                
+                <div class="ai-conversation" id="aiConversation">
+                    <div class="ai-message ai-bot">
+                        <p>您好！我是您的健康助手，可以为您解答关于蔬菜升糖指数、糖尿病饮食、健康食谱等问题。请问有什么可以帮您的？</p>
+                    </div>
+                </div>
+                
+                <div class="ai-input-group">
+                    <input type="text" class="ai-input" id="aiInput" placeholder="输入您的问题...">
+                    <button class="ai-send-btn" id="aiSendBtn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 底部导航栏 -->
+        <div class="wx-tabbar">
+            <a href="#" class="tab-item active">
+                <i class="fas fa-home"></i>
+                <span class="tab-label">首页</span>
+            </a>
+            <a href="#" class="tab-item">
+                <i class="fas fa-history"></i>
+                <span class="tab-label">历史</span>
+            </a>
+            <a href="#" class="tab-item">
+                <i class="fas fa-book-open"></i>
+                <span class="tab-label">食谱</span>
+            </a>
+            <a href="#" class="tab-item">
+                <i class="fas fa-heart"></i>
+                <span class="tab-label">收藏</span>
+            </a>
+            <a href="#" class="tab-item">
+                <i class="fas fa-user"></i>
+                <span class="tab-label">我的</span>
+            </a>
+        </div>
+        
+        <!-- 加载动画 -->
+        <div class="wx-loading" id="wxLoading">
+            <div class="spinner"></div>
+            <p>正在识别中...</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const cameraIcon = document.querySelector('.camera-icon');
+            const loading = document.getElementById('wxLoading');
+            const resultCard = document.getElementById('resultCard');
+            const voiceBtn = document.querySelector('.voice-btn');
+            const voiceInput = document.getElementById('voiceInput');
+            const aiSendBtn = document.getElementById('aiSendBtn');
+            const aiInput = document.getElementById('aiInput');
+            const aiConversation = document.getElementById('aiConversation');
+            
+            // 模拟拍照识别
+            cameraIcon.addEventListener('click', function() {
+                // 显示加载状态
+                loading.classList.add('active');
+                
+                // 模拟识别过程
+                setTimeout(function() {
+                    loading.classList.remove('active');
+                    resultCard.classList.add('active');
+                    
+                    // 滚动到结果区域
+                    resultCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 1500);
+            });
+            
+            // 模拟语音控制
+            voiceBtn.addEventListener('click', function() {
+                const commands = [
+                    "拍照识别",
+                    "西兰花的升糖指数",
+                    "查看健康食谱",
+                    "什么是升糖指数"
+                ];
+                
+                const randomCommand = commands[Math.floor(Math.random() * commands.length)];
+                voiceInput.value = randomCommand;
+                
+                // 如果是拍照命令，触发拍照
+                if(randomCommand.includes("拍照")) {
+                    setTimeout(function() {
+                        cameraIcon.click();
+                    }, 800);
+                }
+            });
+            
+            // 重新识别按钮
+            document.querySelector('.result-card .voice-btn').addEventListener('click', function() {
+                resultCard.classList.remove('active');
+            });
+            
+            // 底部导航切换
+            const tabItems = document.querySelectorAll('.tab-item');
+            tabItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    tabItems.forEach(i => i.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+            
+            // AI助手功能 - 实际部署时替换为真实API调用
+            aiSendBtn.addEventListener('click', sendMessage);
+            aiInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            
+            // 实际部署时使用此函数调用大模型API
+            async function sendMessage() {
+                const message = aiInput.value.trim();
+                if (!message) return;
+                
+                // 添加用户消息
+                addMessage(message, 'user');
+                aiInput.value = '';
+                
+                // 显示加载
+                const thinkingMsg = addMessage('正在思考...', 'bot');
+                
+                try {
+                    // 实际部署时取消注释以下代码
+                    /*
+                    const response = await axios.post('https://your-ai-api.com/chat', {
+                        message: message,
+                        context: '蔬菜升糖指数识别助手'
+                    }, {
+                        headers: {
+                            'Authorization': 'Bearer YOUR_API_KEY',
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    const aiResponse = response.data.answer;
+                    */
+                    
+                    // 模拟API响应
+                    const aiResponse = getMockAIResponse(message);
+                    
+                    // 移除"正在思考"消息
+                    thinkingMsg.remove();
+                    
+                    // 添加AI回复
+                    addMessage(aiResponse, 'bot');
+                } catch (error) {
+                    console.error('AI请求失败:', error);
+                    thinkingMsg.remove();
+                    addMessage('抱歉，处理您的请求时出错。请稍后再试。', 'bot');
+                }
+                
+                // 滚动到底部
+                aiConversation.scrollTop = aiConversation.scrollHeight;
+            }
+            
+            function addMessage(content, sender) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `ai-message ai-${sender}`;
+                messageDiv.innerHTML = `<p>${content}</p>`;
+                aiConversation.appendChild(messageDiv);
+                
+                // 滚动到底部
+                aiConversation.scrollTop = aiConversation.scrollHeight;
+                
+                return messageDiv;
+            }
+            
+            // 模拟AI响应 - 实际部署时删除
+            function getMockAIResponse(message) {
+                const responses = {
+                    "升糖指数": `升糖指数（Glycemic Index，GI）是衡量食物中碳水化合物对血糖浓度影响的指标。低GI食物（≤55）消化吸收慢，血糖升高平缓；高GI食物（≥70）消化快，血糖升高迅速。糖尿病患者建议选择低GI蔬菜。`,
+                    "西兰花": `西兰花是非常健康的低GI蔬菜（GI=15），富含维生素C、K和膳食纤维。推荐做法：清蒸西兰花、西兰花炒鸡胸肉、西兰花沙拉等，避免长时间高温烹饪以保留营养。`,
+                    "食谱": `低GI蔬菜食谱推荐：<br>1. 西兰花虾仁蒸蛋<br>2. 凉拌黄瓜木耳<br>3. 番茄豆腐汤<br>4. 清炒菠菜蘑菇<br>这些食谱营养均衡，升糖指数低，适合糖尿病患者日常食用。`,
+                    "糖尿病": `对于糖尿病患者，建议：<br>- 每天摄入300-500克蔬菜<br>- 深色蔬菜占一半以上<br>- 多选择绿叶蔬菜和十字花科蔬菜<br>- 注意烹饪方式（清蒸、凉拌优于油炸）<br>- 搭配蛋白质食物一起食用`,
+                    "胡萝卜": `胡萝卜的GI值为47，属于低升糖指数蔬菜。它富含β-胡萝卜素，在体内可转化为维生素A。建议：生吃或轻微烹饪，避免长时间高温烹饪以免糖分升高。`
+                };
+                
+                for (const keyword in responses) {
+                    if (message.includes(keyword)) {
+                        return responses[keyword];
+                    }
+                }
+                
+                return `您提到的蔬菜属于低升糖指数类别，非常适合糖尿病饮食。建议保持多样化饮食，每餐搭配优质蛋白质（如鱼、鸡胸肉、豆腐）和健康脂肪（如坚果、橄榄油），这样有助于稳定血糖水平。`;
+            }
+        });
+    </script>
+</body>
+</html>
